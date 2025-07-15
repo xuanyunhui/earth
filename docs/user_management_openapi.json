@@ -1,0 +1,148 @@
+{
+    "openapi": "3.0.2",
+    "info": {
+      "title": "User Management API",
+      "description": "A user management system using Quarkus + Keycloak. This API hides Keycloak details and provides friendly endpoints.",
+      "version": "1.0.0",
+      "contact": {
+        "name": "System Architect",
+        "email": "architect@example.com"
+      }
+    },
+    "paths": {
+      "/api/auth/login": {
+        "post": {
+          "tags": ["Auth"],
+          "summary": "Login",
+          "operationId": "login",
+          "responses": {
+            "200": { "description": "Login successful, returns JWT tokens" }
+          }
+        }
+      },
+      "/api/auth/logout": {
+        "post": {
+          "tags": ["Auth"],
+          "summary": "Logout",
+          "operationId": "logout",
+          "responses": {
+            "204": { "description": "Logout successful" }
+          }
+        }
+      },
+      "/api/auth/register": {
+        "post": {
+          "tags": ["Auth"],
+          "summary": "Register a new user",
+          "operationId": "register",
+          "responses": {
+            "201": { "description": "User created" }
+          }
+        }
+      },
+      "/api/auth/forgot-password": {
+        "post": {
+          "tags": ["Auth"],
+          "summary": "Request password reset",
+          "operationId": "forgotPassword",
+          "responses": {
+            "200": { "description": "Reset email sent" }
+          }
+        }
+      },
+      "/api/auth/reset-password": {
+        "post": {
+          "tags": ["Auth"],
+          "summary": "Reset password",
+          "operationId": "resetPassword",
+          "responses": {
+            "200": { "description": "Password updated" }
+          }
+        }
+      },
+      "/api/users/me": {
+        "get": {
+          "tags": ["User"],
+          "summary": "Get current user info",
+          "operationId": "getCurrentUser",
+          "responses": {
+            "200": { "description": "Returns user info" }
+          }
+        }
+      },
+      "/api/users/me": {
+        "put": {
+          "tags": ["User"],
+          "summary": "Update user profile",
+          "operationId": "updateProfile",
+          "responses": {
+            "200": { "description": "Profile updated" }
+          }
+        }
+      },
+      "/api/users/me/password": {
+        "put": {
+          "tags": ["User"],
+          "summary": "Change password",
+          "operationId": "changePassword",
+          "responses": {
+            "204": { "description": "Password changed" }
+          }
+        }
+      },
+      "/api/admin/users": {
+        "get": {
+          "tags": ["Admin"],
+          "summary": "List users (admin)",
+          "operationId": "listUsers",
+          "responses": {
+            "200": { "description": "User list" }
+          }
+        },
+        "post": {
+          "tags": ["Admin"],
+          "summary": "Create user (admin)",
+          "operationId": "createUser",
+          "responses": {
+            "201": { "description": "User created" }
+          }
+        }
+      },
+      "/api/admin/users/{id}": {
+        "get": {
+          "tags": ["Admin"],
+          "summary": "Get user by ID",
+          "operationId": "getUserById",
+          "responses": {
+            "200": { "description": "User details" }
+          }
+        },
+        "put": {
+          "tags": ["Admin"],
+          "summary": "Update user by ID",
+          "operationId": "updateUser",
+          "responses": {
+            "200": { "description": "User updated" }
+          }
+        },
+        "delete": {
+          "tags": ["Admin"],
+          "summary": "Delete user by ID",
+          "operationId": "deleteUser",
+          "responses": {
+            "204": { "description": "User deleted" }
+          }
+        }
+      },
+      "/api/admin/users/{id}/roles": {
+        "put": {
+          "tags": ["Admin"],
+          "summary": "Assign roles to user",
+          "operationId": "assignRoles",
+          "responses": {
+            "204": { "description": "Roles updated" }
+          }
+        }
+      }
+    }
+  }
