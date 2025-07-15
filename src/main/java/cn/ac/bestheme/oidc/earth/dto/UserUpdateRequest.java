@@ -1,24 +1,24 @@
-package cn.ac.bestheme.oidc.earth;
+package cn.ac.bestheme.oidc.earth.dto;
 
 import io.quarkus.runtime.annotations.RegisterForReflection;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
 @RegisterForReflection
-@Schema(description = "用户信息")
-public record User(
-    @Schema(description = "用户ID", example = "1")
-    Long id,
-    
+@Schema(description = "更新用户请求")
+public record UserUpdateRequest(
     @Schema(description = "用户名", example = "john_doe")
     String username,
     
     @Schema(description = "邮箱地址", example = "john.doe@example.com")
     String email,
     
-    @Schema(description = "全名", example = "John Doe")
-    String fullName,
+    @Schema(description = "名", example = "John")
+    String firstName,
     
-    @Schema(description = "用户状态", example = "ACTIVE")
-    String status
+    @Schema(description = "姓", example = "Doe")
+    String lastName,
+    
+    @Schema(description = "是否启用", example = "true")
+    Boolean enabled
 ) {
 } 

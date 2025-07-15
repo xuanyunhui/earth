@@ -11,70 +11,6 @@ import static org.hamcrest.CoreMatchers.*;
 public class UserResourceTest {
 
     @Test
-    public void testGetAllUsers() {
-        given()
-            .when().get("/api/users")
-            .then()
-            .statusCode(200)
-            .contentType(ContentType.JSON)
-            .body(is("[]"));
-    }
-
-    @Test
-    public void testCreateUser() {
-        String userJson = """
-            {
-                "username": "testuser",
-                "email": "test@example.com",
-                "fullName": "Test User"
-            }
-            """;
-
-        given()
-            .contentType(ContentType.JSON)
-            .body(userJson)
-            .when().post("/api/users")
-            .then()
-            .statusCode(201)
-            .contentType(ContentType.JSON)
-            .body("username", equalTo("testuser"))
-            .body("email", equalTo("test@example.com"))
-            .body("fullName", equalTo("Test User"))
-            .body("status", equalTo("ACTIVE"));
-    }
-
-    @Test
-    public void testGetUserById() {
-        // 先创建用户
-        String userJson = """
-            {
-                "username": "testuser2",
-                "email": "test2@example.com",
-                "fullName": "Test User 2"
-            }
-            """;
-
-        String location = given()
-            .contentType(ContentType.JSON)
-            .body(userJson)
-            .when().post("/api/users")
-            .then()
-            .statusCode(201)
-            .extract().header("Location");
-
-        // 获取用户ID
-        String userId = location.substring(location.lastIndexOf("/") + 1);
-
-        // 根据ID获取用户
-        given()
-            .when().get("/api/users/" + userId)
-            .then()
-            .statusCode(200)
-            .contentType(ContentType.JSON)
-            .body("username", equalTo("testuser2"));
-    }
-
-    @Test
     public void testHealthEndpoint() {
         given()
             .when().get("/health")
@@ -83,5 +19,143 @@ public class UserResourceTest {
             .contentType(ContentType.JSON)
             .body("status", equalTo("UP"))
             .body("message", containsString("运行正常"));
+    }
+
+    @Test
+    public void testGetCurrentUser() {
+        given()
+            .when().get("/api/users/me")
+            .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON)
+            .body("username", equalTo("currentuser"));
+    }
+
+    @Test
+    public void testUpdateProfile() {
+        String updateJson = """
+            {
+                "firstName": "Updated",
+                "lastName": "Name",
+                "email": "updated@example.com"
+            }
+            """;
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(updateJson)
+            .when().put("/api/users/me")
+            .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON)
+            .body("firstName", equalTo("Updated"))
+            .body("lastName", equalTo("Name"))
+            .body("email", equalTo("updated@example.com"));
+    }
+
+    @Test
+    public void testChangePassword() {
+        String passwordJson = """
+            {
+                "currentPassword": "oldpassword",
+                "newPassword": "newpassword"
+            }
+            """;
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(passwordJson)
+            .when().put("/api/users/me/password")
+            .then()
+            .statusCode(204);
+    }
+
+    @Test
+    public void testLogin() {
+        String loginJson = """
+            {
+                "username": "testuser",
+                "password": "password123"
+            }
+            """;
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(loginJson)
+            .when().post("/api/auth/login")
+            .then()
+            .statusCode(401); // 用户不存在，应该返回401
+    }
+
+    @Test
+    public void testRegister() {
+        String registerJson = """
+            {
+                "username": "newuser",
+                "email": "newuser@example.com",
+                "password": "password123",
+                "firstName": "New",
+                "lastName": "User"
+            }
+            """;
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(registerJson)
+            .when().post("/api/auth/register")
+            .then()
+            .statusCode(201)
+            .contentType(ContentType.JSON)
+            .body("username", equalTo("newuser"))
+            .body("email", equalTo("newuser@example.com"));
+    }
+
+    @Test
+    public void testForgotPassword() {
+        String forgotPasswordJson = """
+            {
+                "email": "test@example.com"
+            }
+            """;
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(forgotPasswordJson)
+            .when().post("/api/auth/forgot-password")
+            .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON)
+            .body("message", containsString("重置邮件已发送"));
+    }
+
+    @Test
+    public void testAdminListUsers() {
+        given()
+            .when().get("/api/admin/users")
+            .then()
+            .statusCode(200)
+            .contentType(ContentType.JSON);
+    }
+
+    @Test
+    public void testAdminCreateUser() {
+        String createUserJson = """
+            {
+                "username": "adminuser",
+                "email": "adminuser@example.com",
+                "password": "password123",
+                "firstName": "Admin",
+                "lastName": "User"
+            }
+            """;
+
+        given()
+            .contentType(ContentType.JSON)
+            .body(createUserJson)
+            .when().post("/api/admin/users")
+            .then()
+            .statusCode(201)
+            .contentType(ContentType.JSON)
+            .body("username", equalTo("adminuser"));
     }
 } 
