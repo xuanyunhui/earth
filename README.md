@@ -11,10 +11,15 @@ Earth是一个基于现代Java技术栈构建的企业级用户管理系统，�
 - **Java 21** - 最新的LTS版本
 - **Maven** - 项目构建和依赖管理
 - **Keycloak** - 开源身份和访问管理解决方案
+- **RESTEasy Reactive** - 响应式REST API框架
+- **SmallRye OpenAPI** - OpenAPI 3.0规范实现
+- **Swagger UI** - API文档可视化界面
 
 ### 核心特性
 - 🚀 **高性能** - 基于Quarkus的快速启动和低内存占用
 - 🔐 **安全认证** - 集成Keycloak提供企业级身份管理
+- 📚 **API文档** - 自动生成OpenAPI 3.0规范文档
+- 🎨 **可视化界面** - 集成Swagger UI提供交互式API文档
 - ☁️ **云原生** - 支持容器化部署和云环境
 - 📦 **容器化** - 提供多种Docker镜像构建方案
 - 🔧 **可扩展** - 模块化架构设计
@@ -57,6 +62,18 @@ earth/
    ```
 
 2. **启动开发模式**
+   
+   **Linux/Mac**:
+   ```bash
+   ./scripts/start-dev.sh
+   ```
+   
+   **Windows**:
+   ```cmd
+   scripts\start-dev.bat
+   ```
+   
+   **或者直接使用Maven**:
    ```bash
    ./mvnw quarkus:dev
    ```
@@ -64,6 +81,8 @@ earth/
 3. **访问应用**
    - 应用地址: http://localhost:8080
    - 健康检查: http://localhost:8080/health
+   - API文档: http://localhost:8080/swagger-ui
+   - OpenAPI规范: http://localhost:8080/openapi
 
 ### 构建项目
 
@@ -98,6 +117,14 @@ earth/
 
 ## 配置说明
 
+### OpenAPI配置
+
+项目已集成OpenAPI 3.0规范，提供以下功能：
+
+- **自动API文档生成** - 基于代码注解自动生成API文档
+- **Swagger UI界面** - 提供交互式API测试界面
+- **OpenAPI规范文件** - 支持API设计工具集成
+
 ### Keycloak集成配置
 
 在 `application.properties` 中配置Keycloak连接：
@@ -124,12 +151,28 @@ quarkus.http.host=0.0.0.0
 
 ## 开发指南
 
+### API开发规范
+
+项目使用OpenAPI 3.0规范进行API设计，开发时请遵循以下规范：
+
+1. **使用OpenAPI注解** - 为所有API端点添加完整的OpenAPI注解
+2. **数据模型定义** - 使用`@Schema`注解定义请求和响应模型
+3. **错误处理** - 定义标准的错误响应格式
+4. **API分组** - 使用`@Tag`注解对API进行分组管理
+
+### API文档
+
+- **详细API文档**: [API使用指南](docs/API_GUIDE.md)
+- **Swagger UI**: 启动应用后访问 `http://localhost:8080/swagger-ui`
+- **OpenAPI规范**: 启动应用后访问 `http://localhost:8080/openapi`
+
 ### 添加新功能
 
 1. 在 `src/main/java` 下创建相应的包结构
 2. 实现业务逻辑
-3. 添加单元测试
-4. 更新文档
+3. 添加OpenAPI注解和文档
+4. 添加单元测试
+5. 更新API文档
 
 ### 代码规范
 
@@ -171,13 +214,11 @@ quarkus.http.host=0.0.0.0
 
 ## 监控和日志
 
-### 健康检查
-- 端点: `/health`
-- 包含应用状态和依赖服务状态
-
-### 指标监控
-- 端点: `/metrics`
-- 提供Prometheus格式的监控指标
+### API文档和监控
+- **Swagger UI**: `/swagger-ui` - 交互式API文档界面
+- **OpenAPI规范**: `/openapi` - OpenAPI 3.0规范文件
+- **健康检查**: `/health` - 应用状态和依赖服务状态
+- **指标监控**: `/metrics` - Prometheus格式的监控指标
 
 ### 日志配置
 - 使用Quarkus内置日志系统
