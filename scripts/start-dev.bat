@@ -17,7 +17,7 @@ echo 🔥 启动Quarkus开发模式...
 echo 📚 API文档将在以下地址可用：
 echo    - Swagger UI: http://localhost:8080/swagger-ui
 echo    - OpenAPI规范: http://localhost:8080/openapi
-echo    - 健康检查: http://localhost:8080/health
+echo    - 健康检查: http://localhost:8080/q/health
 echo.
 
 call mvnw.cmd quarkus:dev 

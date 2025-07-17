@@ -47,7 +47,7 @@ echo "⏳ 等待应用启动..."
 sleep 5
 
 # 测试健康检查
-test_endpoint "健康检查" "GET" "$BASE_URL/health"
+test_endpoint "健康检查" "GET" "$BASE_URL/q/health"
 
 # 测试获取所有用户（初始为空）
 test_endpoint "获取所有用户" "GET" "$BASE_URL/api/users"
@@ -88,7 +88,7 @@ echo "🎉 API测试完成！"
 echo
 echo "📚 访问地址："
 echo "   - 应用主页: $BASE_URL"
-echo "   - 健康检查: $BASE_URL/health"
+echo "   - 健康检查: $BASE_URL/q/health"
 echo "   - Swagger UI: $BASE_URL/swagger-ui/"
 echo "   - OpenAPI规范: $BASE_URL/openapi"
 echo "   - 用户API: $BASE_URL/api/users" 

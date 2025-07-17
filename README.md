@@ -80,7 +80,7 @@ earth/
 
 3. **访问应用**
    - 应用地址: http://localhost:8080
-   - 健康检查: http://localhost:8080/health
+   - 健康检查: http://localhost:8080/q/health
    - API文档: http://localhost:8080/swagger-ui
    - OpenAPI规范: http://localhost:8080/openapi
 
@@ -217,7 +217,9 @@ quarkus.http.host=0.0.0.0
 ### API文档和监控
 - **Swagger UI**: `/swagger-ui` - 交互式API文档界面
 - **OpenAPI规范**: `/openapi` - OpenAPI 3.0规范文件
-- **健康检查**: `/health` - 应用状态和依赖服务状态
+- **健康检查**: `/q/health` - 应用状态和依赖服务状态（使用 Quarkus SmallRye Health）
+  - `/q/health/live` - 存活性检查
+  - `/q/health/ready` - 就绪性检查
 - **指标监控**: `/metrics` - Prometheus格式的监控指标
 
 ### 日志配置

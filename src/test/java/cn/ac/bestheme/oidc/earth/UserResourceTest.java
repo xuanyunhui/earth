@@ -54,16 +54,13 @@ public class UserResourceTest {
             }
             """;
 
-        String location = given()
+        Integer userId = given()
             .contentType(ContentType.JSON)
             .body(userJson)
             .when().post("/api/users")
             .then()
             .statusCode(201)
-            .extract().header("Location");
-
-        // 获取用户ID
-        String userId = location.substring(location.lastIndexOf("/") + 1);
+            .extract().path("id");
 
         // 根据ID获取用户
         given()
@@ -77,11 +74,10 @@ public class UserResourceTest {
     @Test
     public void testHealthEndpoint() {
         given()
-            .when().get("/health")
+            .when().get("/q/health")
             .then()
             .statusCode(200)
             .contentType(ContentType.JSON)
-            .body("status", equalTo("UP"))
-            .body("message", containsString("运行正常"));
+            .body("status", equalTo("UP"));
     }
 } 
