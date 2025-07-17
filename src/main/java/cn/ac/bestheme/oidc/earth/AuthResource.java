@@ -109,4 +109,57 @@ public class AuthResource {
             return Response.status(500).entity(Map.of("error", "获取用户信息异常", "message", e.getMessage())).build();
         }
     }
+
+    @POST
+    @Path("/logout")
+    @Operation(summary = "用户登出")
+    @APIResponse(responseCode = "200", description = "登出成功", content = @Content(schema = @Schema(implementation = Map.class)))
+    @APIResponse(responseCode = "401", description = "未登录或token无效")
+    public Response logout() {
+        try {
+            // 使用 MicroProfile JWT 自动解析的 token
+            if (jwt == null || jwt.getSubject() == null) {
+                return Response.status(401).entity(Map.of("error", "未找到访问令牌", "message", "请在Authorization头中提供Bearer token")).build();
+            }
+            
+            // 获取用户信息用于响应
+            String username = jwt.getClaim("preferred_username");
+            String userId = jwt.getSubject();
+            
+            // 从 JWT 获取原始 token
+            String rawToken = jwt.getClaim("raw_token");
+            if (rawToken == null) {
+                // 如果 raw_token claim 不存在，直接使用注入的 JWT 的原始令牌
+                rawToken = jwt.toString();
+            }
+            
+            // 调用 Keycloak revoke 端点撤销 token
+            boolean revokeSuccess = revokeToken(rawToken);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", revokeSuccess);
+            response.put("message", revokeSuccess ? "登出成功，token已撤销" : "登出成功，但token撤销失败");
+            response.put("user", username);
+            response.put("userId", userId);
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            return Response.status(500).entity(Map.of("error", "登出异常", "message", e.getMessage())).build();
+        }
+    }
+    
+    private boolean revokeToken(String token) {
+        if (token == null || token.isEmpty()) {
+            return false;
+        }
+        
+        try {
+            // 使用 OidcClient 撤销 token
+            oidcClient.revokeAccessToken(token).await().indefinitely();
+            return true;
+        } catch (Exception e) {
+            System.err.println("Token revocation failed: " + e.getMessage());
+            return false;
+        }
+    }
 }
