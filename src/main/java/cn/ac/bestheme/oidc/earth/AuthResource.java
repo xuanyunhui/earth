@@ -22,7 +22,7 @@ import org.eclipse.microprofile.jwt.JsonWebToken;
 
 @Path("/auth")
 @Tag(name = "认证接口")
-public class LoginResource {
+public class AuthResource {
 
     @Inject
     OidcClient oidcClient;
