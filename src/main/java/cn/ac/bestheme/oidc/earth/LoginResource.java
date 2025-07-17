@@ -2,9 +2,9 @@ package cn.ac.bestheme.oidc.earth;
 
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.POST;
+import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.NewCookie;
 import jakarta.ws.rs.core.MediaType;
 import org.eclipse.microprofile.openapi.annotations.Operation;
 import org.eclipse.microprofile.openapi.annotations.tags.Tag;
@@ -17,40 +17,96 @@ import io.quarkus.oidc.client.OidcClient;
 import io.quarkus.oidc.client.Tokens;
 import jakarta.inject.Inject;
 import java.util.Map;
+import java.util.HashMap;
+import org.eclipse.microprofile.jwt.JsonWebToken;
 
-@Path("/auth/login")
-@Tag(name = "登录接口")
+@Path("/auth")
+@Tag(name = "认证接口")
 public class LoginResource {
 
     @Inject
     OidcClient oidcClient;
 
+    @Inject
+    JsonWebToken jwt;
+
     @POST
+    @Path("/login")
     @Consumes(MediaType.APPLICATION_JSON)
-    @Operation(summary = "用户名密码登录，获取token并写入cookie")
-    @APIResponse(responseCode = "200", description = "登录成功，access_token写入cookie", content = @Content(schema = @Schema(implementation = String.class)))
+    @Operation(summary = "用户名密码登录，返回包含token的重定向URL")
+    @APIResponse(responseCode = "200", description = "登录成功，返回包含token的fragment URL", content = @Content(schema = @Schema(implementation = Map.class)))
     public Response login(@RequestBody(required = true) Map<String, String> loginRequest) {
         try {
+            // 通过 OIDC Client 获取 token
             Tokens token = oidcClient.getTokens(
                 Map.of(
                     "username", loginRequest.get("username"),
                     "password", loginRequest.get("password")
                 )
             ).await().indefinitely();
+            
             if (token != null && token.getAccessToken() != null) {
-                NewCookie cookie = new NewCookie.Builder("access_token")
-                    .value(token.getAccessToken())
-                    .path("/")
-                    .maxAge(3600)
-                    .httpOnly(true)
-                    .secure(false)
-                    .build();
-                return Response.ok("登录成功").cookie(cookie).build();
+                // 构建包含 token 的 fragment URL
+                String redirectUrl = buildFragmentUrl(token.getAccessToken(), token.getRefreshToken());
+                
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("redirectUrl", redirectUrl);
+                response.put("message", "登录成功，请重定向到指定URL");
+                
+                return Response.ok(response).build();
             } else {
-                return Response.status(401).entity("登录失败: 未获取到access_token").build();
+                return Response.status(401).entity(Map.of("success", false, "message", "登录失败: 用户名或密码错误")).build();
             }
         } catch (Exception e) {
-            return Response.status(500).entity("登录异常: " + e.getMessage()).build();
+            return Response.status(500).entity(Map.of("success", false, "message", "登录异常: " + e.getMessage())).build();
+        }
+    }
+    
+    private String buildFragmentUrl(String accessToken, String refreshToken) {
+        // 构建包含 token 的 fragment URL，前端可以从这个 URL 的 #fragment 中获取 token
+        String baseUrl = "http://localhost:3000/callback"; // 假设前端回调地址
+        
+        StringBuilder fragmentUrl = new StringBuilder(baseUrl);
+        fragmentUrl.append("#access_token=").append(accessToken);
+        fragmentUrl.append("&token_type=Bearer");
+        
+        if (refreshToken != null && !refreshToken.isEmpty()) {
+            fragmentUrl.append("&refresh_token=").append(refreshToken);
+        }
+        
+        // 添加过期时间（假设1小时）
+        fragmentUrl.append("&expires_in=3600");
+        fragmentUrl.append("&scope=openid profile email");
+        
+        return fragmentUrl.toString();
+    }
+
+    @GET
+    @Path("/me")
+    @Operation(summary = "获取当前用户信息")
+    @APIResponse(responseCode = "200", description = "成功获取用户信息", content = @Content(schema = @Schema(implementation = Map.class)))
+    @APIResponse(responseCode = "401", description = "未登录或token无效")
+    public Response getCurrentUser() {
+        try {
+            // 使用 MicroProfile JWT 自动解析 Authorization 头中的 token
+            if (jwt == null || jwt.getSubject() == null) {
+                return Response.status(401).entity(Map.of("error", "未找到访问令牌", "message", "请在Authorization头中提供Bearer token")).build();
+            }
+            
+            // 使用 MicroProfile JWT 获取用户信息
+            Map<String, Object> userInfo = new HashMap<>();
+            userInfo.put("sub", jwt.getSubject());
+            userInfo.put("preferred_username", jwt.getClaim("preferred_username"));
+            userInfo.put("email", jwt.getClaim("email"));
+            userInfo.put("name", jwt.getClaim("name"));
+            userInfo.put("given_name", jwt.getClaim("given_name"));
+            userInfo.put("family_name", jwt.getClaim("family_name"));
+            userInfo.put("email_verified", jwt.getClaim("email_verified"));
+            
+            return Response.ok(userInfo).build();
+        } catch (Exception e) {
+            return Response.status(500).entity(Map.of("error", "获取用户信息异常", "message", e.getMessage())).build();
         }
     }
 }
