@@ -13,22 +13,34 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 import org.eclipse.microprofile.openapi.annotations.media.Content;
 import org.eclipse.microprofile.openapi.annotations.media.Schema;
 
-import io.quarkus.oidc.client.OidcClient;
 import io.quarkus.oidc.client.Tokens;
+import io.quarkus.oidc.client.OidcClients;
 import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.HashMap;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import org.eclipse.microprofile.jwt.JsonWebToken;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @Path("/auth")
 @Tag(name = "认证接口")
 public class AuthResource {
 
     @Inject
-    OidcClient oidcClient;
+    OidcClients oidcClients;
 
     @Inject
     JsonWebToken jwt;
+
+    @ConfigProperty(name = "quarkus.oidc-client.broker.auth-server-url")
+    String brokerAuthServerUrl;
+
+    @ConfigProperty(name = "quarkus.oidc-client.broker.client-id")
+    String brokerClientId;
+
+    @ConfigProperty(name = "app.redirect-uri")
+    String brokerRedirectURL;
 
     @POST
     @Path("/login")
@@ -38,7 +50,7 @@ public class AuthResource {
     public Response login(@RequestBody(required = true) Map<String, String> loginRequest) {
         try {
             // 通过 OIDC Client 获取 token
-            Tokens token = oidcClient.getTokens(
+            Tokens token = oidcClients.getClient().getTokens(
                 Map.of(
                     "username", loginRequest.get("username"),
                     "password", loginRequest.get("password")
@@ -62,6 +74,66 @@ public class AuthResource {
             return Response.status(500).entity(Map.of("success", false, "message", "登录异常: " + e.getMessage())).build();
         }
     }
+
+    @GET
+    @Path("/github/login")
+    @Operation(summary = "GitHub OAuth 登录，返回授权URL")
+    @APIResponse(responseCode = "200", description = "返回GitHub授权URL", content = @Content(schema = @Schema(implementation = Map.class)))
+    public Response githubLogin() {
+        try {
+            // 构建 Keycloak GitHub broker 授权URL
+            String keycloakAuthUrl = buildGithubAuthUrl();
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("authUrl", keycloakAuthUrl);
+            response.put("message", "请重定向到GitHub授权页面");
+            
+            return Response.ok(response).build();
+        } catch (Exception e) {
+            return Response.status(500).entity(Map.of("success", false, "message", "GitHub登录异常: " + e.getMessage())).build();
+        }
+    }
+
+    @GET
+    @Path("/callback")
+    @Operation(summary = "OIDC 回调处理 (GET)，处理 Keycloak broker 重定向")
+    @APIResponse(responseCode = "200", description = "登录成功，返回包含token的fragment URL", content = @Content(schema = @Schema(implementation = Map.class)))
+    @APIResponse(responseCode = "400", description = "缺少授权码")
+    @APIResponse(responseCode = "401", description = "授权码无效")
+    @APIResponse(responseCode = "500", description = "服务器错误")
+    public Response oauthCallbackGet(@jakarta.ws.rs.QueryParam("code") String authorizationCode,
+                                     @jakarta.ws.rs.QueryParam("state") String state) {
+        try {
+            if (authorizationCode == null || authorizationCode.isEmpty()) {
+                return Response.status(400).entity(Map.of("success", false, "message", "缺少授权码")).build();
+            }
+            
+            // 通过 OIDC Client 使用授权码交换 token
+            Tokens token = oidcClients.getClient("broker").getTokens(
+                Map.of(
+                    "code", authorizationCode,
+                    "redirect_uri", brokerRedirectURL
+                )
+            ).await().indefinitely();
+            
+            if (token != null && token.getAccessToken() != null) {
+                // 构建包含 token 的 fragment URL，逻辑和 /auth/login 一样
+                String redirectUrl = buildFragmentUrl(token.getAccessToken(), token.getRefreshToken());
+                
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("redirectUrl", redirectUrl);
+                response.put("message", "登录成功，请重定向到指定URL");
+                
+                return Response.ok(response).build();
+            } else {
+                return Response.status(401).entity(Map.of("success", false, "message", "登录失败: 授权码无效")).build();
+            }
+        } catch (Exception e) {
+            return Response.status(500).entity(Map.of("success", false, "message", "回调处理异常: " + e.getMessage())).build();
+        }
+    }
     
     private String buildFragmentUrl(String accessToken, String refreshToken) {
         // 构建包含 token 的 fragment URL，前端可以从这个 URL 的 #fragment 中获取 token
@@ -80,6 +152,26 @@ public class AuthResource {
         fragmentUrl.append("&scope=openid profile email");
         
         return fragmentUrl.toString();
+    }
+
+    private String buildGithubAuthUrl() {
+        // 构建 Keycloak GitHub broker 授权URL，使用配置中的信息
+        try {
+            StringBuilder authUrl = new StringBuilder();
+            authUrl.append(brokerAuthServerUrl)
+                   .append("/protocol/openid-connect/auth"); // 使用标准的 OIDC 认证端点
+            
+            authUrl.append("?client_id=").append(brokerClientId)
+                   .append("&redirect_uri=").append(URLEncoder.encode(brokerRedirectURL, StandardCharsets.UTF_8))
+                   .append("&response_type=code")
+                   .append("&scope=openid")
+                   .append("&kc_idp_hint=github") // 指定使用 GitHub identity provider
+                   .append("&state=").append(System.currentTimeMillis()); // 简单的 state 参数
+            
+            return authUrl.toString();
+        } catch (Exception e) {
+            throw new RuntimeException("构建 GitHub 授权 URL 失败", e);
+        }
     }
 
     @GET
@@ -155,7 +247,7 @@ public class AuthResource {
         
         try {
             // 使用 OidcClient 撤销 token
-            oidcClient.revokeAccessToken(token).await().indefinitely();
+            oidcClients.getClient("broker").revokeAccessToken(token).await().indefinitely();
             return true;
         } catch (Exception e) {
             System.err.println("Token revocation failed: " + e.getMessage());
