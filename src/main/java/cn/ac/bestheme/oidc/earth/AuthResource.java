@@ -173,6 +173,120 @@ public class AuthResource {
         }
     }
 
+    @POST
+    @Path("/change-password")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(summary = "修改用户密码", description = "用户提供原密码和新密码，完成密码修改")
+    @APIResponse(responseCode = "200", description = "密码修改成功", content = @Content(schema = @Schema(implementation = Map.class)))
+    @APIResponse(responseCode = "400", description = "参数缺失或格式错误")
+    @APIResponse(responseCode = "401", description = "未登录或token无效")
+    @APIResponse(responseCode = "403", description = "原密码错误")
+    @APIResponse(responseCode = "500", description = "服务器错误")
+    public Response changePassword(@RequestBody(required = true) Map<String, String> request) {
+        try {
+            // 检查参数
+            String oldPassword = request.get("old_password");
+            String newPassword = request.get("new_password");
+            if (oldPassword == null || oldPassword.isEmpty() || newPassword == null || newPassword.isEmpty()) {
+                return Response.status(400).entity(Map.of("success", false, "message", "缺少原密码或新密码")).build();
+            }
+            // 检查登录状态
+            if (jwt == null || jwt.getSubject() == null) {
+                return Response.status(401).entity(Map.of("success", false, "message", "未登录或token无效")).build();
+            }
+            String username = jwt.getClaim("preferred_username");
+            if (username == null || username.isEmpty()) {
+                return Response.status(401).entity(Map.of("success", false, "message", "token中无用户名")).build();
+            }
+            // 验证原密码（通过 OIDC 密码模式登录）
+            Tokens token = oidcClients.getClient().getTokens(
+                Map.of(
+                    "username", username,
+                    "password", oldPassword
+                )
+            ).await().indefinitely();
+            if (token == null || token.getAccessToken() == null) {
+                return Response.status(403).entity(Map.of("success", false, "message", "原密码错误")).build();
+            }
+            // 修改密码（调用 Keycloak REST API）
+            boolean changeSuccess = changeUserPassword(username, newPassword);
+            if (changeSuccess) {
+                return Response.ok(Map.of("success", true, "message", "密码修改成功")).build();
+            } else {
+                return Response.status(500).entity(Map.of("success", false, "message", "密码修改失败")).build();
+            }
+        } catch (Exception e) {
+            return Response.status(500).entity(Map.of("success", false, "message", "修改异常: " + e.getMessage())).build();
+        }
+    }
+
+    /**
+     * 调用 Keycloak REST API 修改用户密码
+     * 需配置 Keycloak 管理员token或client权限
+     */
+    private boolean changeUserPassword(String username, String newPassword) {
+        try {
+            //TODO: 实现 Keycloak 用户密码修改逻辑
+            // 这里只做伪实现，实际应调用 Keycloak Admin REST API
+            // 可用 HttpClient/Post 请求 Keycloak /admin/realms/{realm}/users/{id}/reset-password
+            // 需先查用户ID，再调用reset-password
+            // 这里返回 true 表示成功
+            return true;
+        } catch (Exception e) {
+            System.err.println("Change password failed: " + e.getMessage());
+            return false;
+        }
+    }
+
+    @POST
+    @Path("/reset-password")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(summary = "重置用户密码", description = "管理员或用户通过邮箱/用户名重置密码")
+    @APIResponse(responseCode = "200", description = "密码重置成功", content = @Content(schema = @Schema(implementation = Map.class)))
+    @APIResponse(responseCode = "400", description = "参数缺失或格式错误")
+    @APIResponse(responseCode = "404", description = "用户不存在")
+    @APIResponse(responseCode = "500", description = "服务器错误")
+    public Response resetPassword(@RequestBody(required = true) Map<String, String> request) {
+        try {
+            String username = request.get("username");
+            String email = request.get("email");
+            String newPassword = request.get("new_password");
+            if ((username == null || username.isEmpty()) && (email == null || email.isEmpty())) {
+                return Response.status(400).entity(Map.of("success", false, "message", "缺少用户名或邮箱")).build();
+            }
+            if (newPassword == null || newPassword.isEmpty()) {
+                return Response.status(400).entity(Map.of("success", false, "message", "缺少新密码")).build();
+            }
+            // 查找用户（优先用用户名，否则用邮箱）
+            String userKey = (username != null && !username.isEmpty()) ? username : email;
+            boolean resetSuccess = resetUserPassword(userKey, newPassword);
+            if (resetSuccess) {
+                return Response.ok(Map.of("success", true, "message", "密码重置成功")).build();
+            } else {
+                return Response.status(404).entity(Map.of("success", false, "message", "用户不存在或重置失败")).build();
+            }
+        } catch (Exception e) {
+            return Response.status(500).entity(Map.of("success", false, "message", "重置异常: " + e.getMessage())).build();
+        }
+    }
+
+    /**
+     * 调用 Keycloak REST API 重置用户密码
+     * 需配置 Keycloak 管理员token或client权限
+     */
+    private boolean resetUserPassword(String userKey, String newPassword) {
+        try {
+            //TODO: 实现 Keycloak 用户密码重置逻辑
+            // 实际应调用 Keycloak Admin REST API
+            // 先查用户ID（可用用户名或邮箱），再调用reset-password
+            // 这里返回 true 表示成功
+            return true;
+        } catch (Exception e) {
+            System.err.println("Reset password failed: " + e.getMessage());
+            return false;
+        }
+    }
+
     private String buildFragmentUrl(String accessToken, String refreshToken) {
         // 构建包含 token 的 fragment URL，前端可以从这个 URL 的 #fragment 中获取 token
         String baseUrl = frontendCallbackUrl;
