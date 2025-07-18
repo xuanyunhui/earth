@@ -42,6 +42,9 @@ public class AuthResource {
     @ConfigProperty(name = "app.redirect-uri")
     String brokerRedirectURL;
 
+    @ConfigProperty(name = "app.frontend-callback-url")
+    String frontendCallbackUrl;
+
     @POST
     @Path("/login")
     @Consumes(MediaType.APPLICATION_JSON)
@@ -137,20 +140,16 @@ public class AuthResource {
     
     private String buildFragmentUrl(String accessToken, String refreshToken) {
         // 构建包含 token 的 fragment URL，前端可以从这个 URL 的 #fragment 中获取 token
-        String baseUrl = "http://localhost:3000/callback"; // 假设前端回调地址
-        
+        String baseUrl = frontendCallbackUrl;
         StringBuilder fragmentUrl = new StringBuilder(baseUrl);
         fragmentUrl.append("#access_token=").append(accessToken);
         fragmentUrl.append("&token_type=Bearer");
-        
         if (refreshToken != null && !refreshToken.isEmpty()) {
             fragmentUrl.append("&refresh_token=").append(refreshToken);
         }
-        
         // 添加过期时间（假设1小时）
         fragmentUrl.append("&expires_in=3600");
         fragmentUrl.append("&scope=openid profile email");
-        
         return fragmentUrl.toString();
     }
 
