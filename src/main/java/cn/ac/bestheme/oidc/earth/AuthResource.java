@@ -138,6 +138,41 @@ public class AuthResource {
         }
     }
     
+    @POST
+    @Path("/refresh")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Operation(summary = "使用refresh_token刷新access_token，返回新的fragment URL")
+    @APIResponse(responseCode = "200", description = "刷新成功，返回新的fragment URL", content = @Content(schema = @Schema(implementation = Map.class)))
+    @APIResponse(responseCode = "400", description = "缺少refresh_token")
+    @APIResponse(responseCode = "401", description = "refresh_token无效")
+    @APIResponse(responseCode = "500", description = "服务器错误")
+    public Response refreshToken(@RequestBody(required = true) Map<String, String> request) {
+        try {
+            String refreshToken = request.get("refresh_token");
+            if (refreshToken == null || refreshToken.isEmpty()) {
+                return Response.status(400).entity(Map.of("success", false, "message", "缺少refresh_token")).build();
+            }
+            // 通过 OIDC Client 刷新 token
+            Tokens token = oidcClients.getClient("broker").getTokens(
+                Map.of(
+                    "refresh_token", refreshToken
+                )
+            ).await().indefinitely();
+            if (token != null && token.getAccessToken() != null) {
+                String redirectUrl = buildFragmentUrl(token.getAccessToken(), token.getRefreshToken());
+                Map<String, Object> response = new HashMap<>();
+                response.put("success", true);
+                response.put("redirectUrl", redirectUrl);
+                response.put("message", "刷新成功，请重定向到指定URL");
+                return Response.ok(response).build();
+            } else {
+                return Response.status(401).entity(Map.of("success", false, "message", "refresh_token无效或已过期")).build();
+            }
+        } catch (Exception e) {
+            return Response.status(500).entity(Map.of("success", false, "message", "刷新异常: " + e.getMessage())).build();
+        }
+    }
+
     private String buildFragmentUrl(String accessToken, String refreshToken) {
         // 构建包含 token 的 fragment URL，前端可以从这个 URL 的 #fragment 中获取 token
         String baseUrl = frontendCallbackUrl;
