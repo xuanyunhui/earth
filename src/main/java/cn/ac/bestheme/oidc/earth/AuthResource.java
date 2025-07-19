@@ -64,12 +64,10 @@ public class AuthResource {
                 // 构建包含 token 的 fragment URL
                 String redirectUrl = buildFragmentUrl(token.getAccessToken(), token.getRefreshToken());
                 
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", true);
-                response.put("redirectUrl", redirectUrl);
-                response.put("message", "登录成功，请重定向到指定URL");
-                
-                return Response.ok(response).build();
+                return Response.status(302)
+                        .header("Location", redirectUrl)
+                        .entity(Map.of("success", true, "message", "登录成功，重定向到指定URL"))
+                        .build();
             } else {
                 return Response.status(401).entity(Map.of("success", false, "message", "登录失败: 用户名或密码错误")).build();
             }
@@ -124,12 +122,10 @@ public class AuthResource {
                 // 构建包含 token 的 fragment URL，逻辑和 /auth/login 一样
                 String redirectUrl = buildFragmentUrl(token.getAccessToken(), token.getRefreshToken());
                 
-                Map<String, Object> response = new HashMap<>();
-                response.put("success", true);
-                response.put("redirectUrl", redirectUrl);
-                response.put("message", "登录成功，请重定向到指定URL");
-                
-                return Response.ok(response).build();
+                return Response.status(302)
+                        .header("Location", redirectUrl)
+                        .entity(Map.of("success", true, "message", "登录成功，定向到指定URL"))
+                        .build();
             } else {
                 return Response.status(401).entity(Map.of("success", false, "message", "登录失败: 授权码无效")).build();
             }
@@ -298,7 +294,7 @@ public class AuthResource {
         }
         // 添加过期时间（假设1小时）
         fragmentUrl.append("&expires_in=3600");
-        fragmentUrl.append("&scope=openid profile email");
+        fragmentUrl.append("&scope=openid");
         return fragmentUrl.toString();
     }
 
